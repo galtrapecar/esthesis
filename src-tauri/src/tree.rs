@@ -224,49 +224,4 @@ pub fn interpret(node: Node) -> RgbaImage {
             }
         };
     image
-    // args = []
-    // for arg in node.args:
-    //     if arg.function:
-    //         args.append(interpret(arg))
-    //     else:
-    //         args.append(arg.terminal)
-    // image = node.function(*args)
-    // return image
 }
-
-// match arg.function.unwrap().function {
-//     // Overlay
-//     EFunction::Add => {
-//         add(interpret(node.args[0]), )
-//     },
-//     EFunction::Stamp => {
-
-//     },
-//     EFunction::Tile => {
-
-//     },
-//     // Color
-//     EFunction::Brighten => {
-
-//     },
-//     EFunction::Contrast => {
-
-//     },
-//     EFunction::Hue => {
-
-//     },
-//     EFunction::Invert => {
-
-//     },
-//     // Transforms
-//     EFunction::FlipHorizontal => {
-
-//     },
-//     EFunction::FlipVertical => {
-
-//     },
-//     // Draw
-//     EFunction::Gradient => {
-
-//     }
-// }
