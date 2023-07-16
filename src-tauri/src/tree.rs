@@ -1,7 +1,7 @@
 use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::sets::{FUNCTION_SET, FUNCTION, ETerminal, RESIZE_FILTER_SET};
+use crate::{sets::{FUNCTION_SET, FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*};
 
 #[derive(Clone, Debug)]
 enum NodeType {
@@ -166,3 +166,107 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
     }
     root
 }
+
+pub fn interpret(node: Node) -> RgbaImage {
+    let mut arguments: Vec<NodeValue> = vec![];
+    for child in node.args {
+        match child.node_type {
+            NodeType::Function => {
+                arguments.append(&mut vec![NodeValue {
+                    image: Some(interpret(child)),
+                    int32: None,
+                    float32: None,
+                    coordinate: None,
+                    rgba8: None,
+                    resize_filter: None,
+                }])
+            },
+            NodeType::Terminal => {
+                arguments.append(&mut vec![child.value.unwrap()])
+            }
+        }
+    }
+    let image: RgbaImage = 
+        match node.function.unwrap().function {
+            // Overlay
+            EFunction::Add => {
+                add(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap())
+            },
+            EFunction::Stamp => {
+                stamp(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap(), Some(arguments[2].coordinate.unwrap()))
+            },
+            EFunction::Tile => {
+                tile(arguments[0].clone().image.unwrap(), arguments[1].clone().float32.unwrap(), arguments[2].resize_filter.unwrap())
+            },
+            // Color
+            EFunction::Brighten => {
+                brighten(arguments[0].clone().image.unwrap(), arguments[1].clone().int32.unwrap())
+            },
+            EFunction::Contrast => {
+                contrast(arguments[0].clone().image.unwrap(), arguments[1].clone().float32.unwrap())
+            },
+            EFunction::Hue => {
+                hue(arguments[0].clone().image.unwrap(), arguments[1].clone().int32.unwrap())
+            },
+            EFunction::Invert => {
+                invert(arguments[0].clone().image.unwrap())
+            },
+            // Transforms
+            EFunction::FlipHorizontal => {
+                flip_horizontal(arguments[0].clone().image.unwrap())
+            },
+            EFunction::FlipVertical => {
+                flip_vertical(arguments[0].clone().image.unwrap())
+            },
+            // Draw
+            EFunction::Gradient => {
+                gradient(arguments[0].clone().image.unwrap(), arguments[1].clone().rgba8.unwrap(), arguments[2].rgba8.unwrap())
+            }
+        };
+    image
+    // args = []
+    // for arg in node.args:
+    //     if arg.function:
+    //         args.append(interpret(arg))
+    //     else:
+    //         args.append(arg.terminal)
+    // image = node.function(*args)
+    // return image
+}
+
+// match arg.function.unwrap().function {
+//     // Overlay
+//     EFunction::Add => {
+//         add(interpret(node.args[0]), )
+//     },
+//     EFunction::Stamp => {
+
+//     },
+//     EFunction::Tile => {
+
+//     },
+//     // Color
+//     EFunction::Brighten => {
+
+//     },
+//     EFunction::Contrast => {
+
+//     },
+//     EFunction::Hue => {
+
+//     },
+//     EFunction::Invert => {
+
+//     },
+//     // Transforms
+//     EFunction::FlipHorizontal => {
+
+//     },
+//     EFunction::FlipVertical => {
+
+//     },
+//     // Draw
+//     EFunction::Gradient => {
+
+//     }
+// }
