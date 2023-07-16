@@ -23,6 +23,7 @@ impl NodeValue {
     pub fn from_image(i: RgbaImage) -> Self {
         NodeValue { 
             int32: None, 
+            float32: None, 
             coordinate: None, 
             rgba8: None, 
             image: Some(i), 
