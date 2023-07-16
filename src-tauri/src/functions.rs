@@ -1,7 +1,6 @@
 use image::*;
 use image::imageops::*;
 use image::imageops::colorops::*;
-use imageproc::haar::{draw_haar_feature_mut, enumerate_haar_features};
 use imageproc::map::map_pixels;
 
 // Overlay
@@ -23,14 +22,20 @@ pub fn stamp(mut i: RgbaImage, j: RgbaImage, xy: Option<[i64; 2]>) -> RgbaImage 
     i
 }
 
-pub fn haar(mut i: RgbaImage) -> RgbaImage {
-    let haar_features = enumerate_haar_features(20, 20);
-    println!("{:?}", haar_features);
-    for haar_feature in haar_features {
-        draw_haar_feature_mut(&mut i, haar_feature);
-    }
+pub fn tile(mut i: RgbaImage, scale: f32, filter: FilterType) -> RgbaImage {
+    let j = resize(i.clone(), scale, filter);
+    imageops::tile(&mut i, &j);
     i
 }
+
+// pub fn haar(mut i: RgbaImage) -> RgbaImage {
+//     let haar_features = enumerate_haar_features(20, 20);
+//     println!("{:?}", haar_features);
+//     for haar_feature in haar_features {
+//         draw_haar_feature_mut(&mut i, haar_feature);
+//     }
+//     i
+// }
 
 // Color
 
@@ -70,6 +75,12 @@ pub fn flip_vertical(mut i: RgbaImage) -> RgbaImage {
     flip_vertical_in_place( &mut i);
     i
 }
+
+pub fn resize(mut i: RgbaImage, scale: f32, filter: FilterType) -> RgbaImage {
+    imageops::resize(&i, (i.width() as f32 * scale) as u32, (i.height() as f32 * scale) as u32, filter)
+}
+
+// Draw
 
 pub fn gradient(mut i: RgbaImage, start: Rgba<u8>, stop: Rgba<u8>) -> RgbaImage {
     let j = i.clone();

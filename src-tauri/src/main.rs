@@ -6,6 +6,7 @@ mod tree;
 mod sets;
 
 use image::io::Reader;
+use tree::grow;
 use crate::functions::*;
 
 fn main() {
@@ -13,10 +14,12 @@ fn main() {
         .invoke_handler(tauri::generate_handler![])
         .setup(|app| {
             let path = app.handle().path_resolver().app_data_dir().unwrap();
-            let mut out = Reader::open(path.join("img.webp"))?.decode()?.to_rgba8();
-            out = haar(out);
-            out = flip_horizontal(out);
+            let mut out = Reader::open(path.join("img2.png"))?.decode()?.to_rgba8();
+            out = tile(out.clone(), 0.5, image::imageops::FilterType::Nearest);
             out.save(path.join("out.png"))?;
+
+            let root = grow(2, 6);
+            println!("{:?}", root);
 
             Ok(())
         })
