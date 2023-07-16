@@ -1,4 +1,6 @@
-use image::imageops::FilterType;
+use std::vec;
+
+use image::{imageops::FilterType, RgbaImage};
 use lazy_static::lazy_static;
 
 #[derive(Clone, Debug)]
@@ -113,3 +115,7 @@ pub static RESIZE_FILTER_SET: [FilterType; 5] = [
     FilterType::Lanczos3,
     FilterType::Triangle,
 ];
+
+lazy_static! {
+    pub static ref IMAGE_TERMINAL_SET: Vec<RgbaImage> = Vec::from([RgbaImage::new(1024, 1024)]);
+}

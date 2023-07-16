@@ -19,6 +19,68 @@ struct NodeValue {
     resize_filter: Option<FilterType>,
 }
 
+impl NodeValue {
+    pub fn from_image(i: RgbaImage) -> Self {
+        NodeValue { 
+            int32: None, 
+            coordinate: None, 
+            rgba8: None, 
+            image: Some(i), 
+            resize_filter: None 
+        }
+    }
+    pub fn from_int32(i: i32) -> Self {
+        NodeValue { 
+            int32: Some(i), 
+            float32: None, 
+            coordinate: None, 
+            rgba8: None, 
+            image: None, 
+            resize_filter: None 
+        }
+    }
+    pub fn from_float32(i: f32) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: Some(i), 
+            coordinate: None, 
+            rgba8: None, 
+            image: None, 
+            resize_filter: None 
+        }
+    }
+    pub fn from_coordinate(i: [i64; 2]) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: None, 
+            coordinate: Some(i), 
+            rgba8: None, 
+            image: None, 
+            resize_filter: None 
+        }
+    }
+    pub fn from_rgba8(i: Rgba<u8>) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: None, 
+            coordinate: None, 
+            rgba8: Some(i), 
+            image: None, 
+            resize_filter: None 
+        }
+    }
+    pub fn from_resize_filter(i: FilterType) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: None, 
+            coordinate: None, 
+            rgba8: None, 
+            image: None, 
+            resize_filter: Some(i) 
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Node {
     node_type: NodeType,
@@ -62,14 +124,7 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                         node_type: NodeType::Terminal,
                         function: None,
                         terminal: Some(ETerminal::Image),
-                        value: Some(NodeValue {
-                            int32: None,
-                            float32: None,
-                            coordinate: None,
-                            rgba8: None,
-                            image: Some(RgbaImage::new(500, 500)),
-                            resize_filter: None,
-                        }),
+                        value: Some(NodeValue::from_image(RgbaImage::new(500, 500))),
                         args: vec![]
                     }]);
                 }
@@ -79,14 +134,7 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Int32),
-                    value: Some(NodeValue {
-                        int32: Some(rand::thread_rng().gen_range(1..255)),
-                        float32: None,
-                        coordinate: None,
-                        rgba8: None,
-                        image: None,
-                        resize_filter: None,
-                    }),
+                    value: Some(NodeValue::from_int32(rand::thread_rng().gen_range(1..255))),
                     args: vec![]
                 }]);
             },
@@ -95,14 +143,7 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Float32),
-                    value: Some(NodeValue {
-                        int32: None,
-                        float32: Some(rand::thread_rng().gen_range(1..100) as f32 / 100.0),
-                        coordinate: None,
-                        rgba8: None,
-                        image: None,
-                        resize_filter: None,
-                    }),
+                    value: Some(NodeValue::from_float32(rand::thread_rng().gen_range(1..100) as f32 / 100.0)),
                     args: vec![]
                 }]);
             },
@@ -111,17 +152,10 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Coordinate),
-                    value: Some(NodeValue {
-                        int32: None,
-                        float32: None,
-                        coordinate: Some([
-                            rand::thread_rng().gen_range(0..980),
-                            rand::thread_rng().gen_range(0..980)
-                        ]),
-                        rgba8: None,
-                        image: None,
-                        resize_filter: None,
-                    }),
+                    value: Some(NodeValue::from_coordinate([
+                        rand::thread_rng().gen_range(0..980),
+                        rand::thread_rng().gen_range(0..980)
+                    ])),
                     args: vec![]
                 }]);
             },
@@ -130,19 +164,12 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Rgba8),
-                    value: Some(NodeValue {
-                        int32: None,
-                        float32: None,
-                        coordinate: None,
-                        rgba8: Some(*Rgba::from_slice(&[
-                            rand::thread_rng().gen_range(0..255) as u8,
-                            rand::thread_rng().gen_range(0..255) as u8,
-                            rand::thread_rng().gen_range(0..255) as u8,
-                            rand::thread_rng().gen_range(1..255) as u8
-                        ])),
-                        image: None,
-                        resize_filter: None,
-                    }),
+                    value: Some(NodeValue::from_rgba8(*Rgba::from_slice(&[
+                        rand::thread_rng().gen_range(0..255) as u8,
+                        rand::thread_rng().gen_range(0..255) as u8,
+                        rand::thread_rng().gen_range(0..255) as u8,
+                        rand::thread_rng().gen_range(1..255) as u8
+                    ]))),
                     args: vec![]
                 }]);
             },
@@ -151,14 +178,7 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::ResizeFilter),
-                    value: Some(NodeValue {
-                        int32: None,
-                        float32: None,
-                        coordinate: None,
-                        rgba8: None,
-                        image: None,
-                        resize_filter: Some(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())]),
-                    }),
+                    value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
                     args: vec![]
                 }]);
             },
