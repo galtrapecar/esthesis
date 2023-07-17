@@ -30,8 +30,18 @@ pub enum ETerminal {
     Coordinate,
     Rgba8,
     Image,
+    Stamp,
     ResizeFilter,
     NoiseType,
+}
+
+#[derive(Clone, Debug)]
+pub enum EImage {
+    Carnation,
+    Tape,
+    Statue,
+    Paper,
+    Empty,
 }
 
 #[derive(Clone, Debug)]
@@ -112,8 +122,8 @@ lazy_static! {
         FUNCTION {
             name: "Noise".to_string(),
             function: EFunction::Noise,
-            arity: 2,
-            args: vec![ETerminal::Image, ETerminal::NoiseType],
+            arity: 4,
+            args: vec![ETerminal::Image, ETerminal::NoiseType, ETerminal::Float32, ETerminal::Int32],
         },
     ]);
 }
@@ -126,6 +136,15 @@ pub static RESIZE_FILTER_SET: [FilterType; 5] = [
     FilterType::Triangle,
 ];
 
-lazy_static! {
-    pub static ref IMAGE_TERMINAL_SET: Vec<RgbaImage> = Vec::from([RgbaImage::new(1024, 1024)]);
-}
+//RgbaImage::new(1024, 1024)
+
+pub static IMAGE_TERMINAL_SET: [EImage; 1] = [
+    EImage::Empty,
+];
+
+pub static STAMP_IMAGE_TERMINAL_SET: [EImage; 4] = [
+    EImage::Carnation,
+    EImage::Tape,
+    EImage::Statue,
+    EImage::Paper,
+];

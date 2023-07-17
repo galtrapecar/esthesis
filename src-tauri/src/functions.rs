@@ -3,12 +3,11 @@ use image::imageops::*;
 use image::imageops::colorops::*;
 use imageproc::map::map_pixels;
 use imageproc::noise::{gaussian_noise_mut, salt_and_pepper_noise_mut};
-use rand::Rng;
 
 // Overlay
 
 pub fn add(mut i: RgbaImage, mut j: RgbaImage) -> RgbaImage {
-    j = map_pixels(&j, |x, y, p| {
+    j = map_pixels(&j, |_x, _y, p| {
         Rgba([p[0], p[1], p[2], 128])
     });
     overlay(&mut i, &j, 0, 0);
@@ -78,7 +77,7 @@ pub fn flip_vertical(mut i: RgbaImage) -> RgbaImage {
     i
 }
 
-pub fn resize(mut i: RgbaImage, scale: f32, filter: FilterType) -> RgbaImage {
+pub fn resize(i: RgbaImage, scale: f32, filter: FilterType) -> RgbaImage {
     imageops::resize(&i, (i.width() as f32 * scale) as u32, (i.height() as f32 * scale) as u32, filter)
 }
 
@@ -99,13 +98,13 @@ pub enum NoiseType {
     SaltPepper
 }
 
-pub fn noise(mut i: RgbaImage, noise_type: NoiseType) -> RgbaImage {
+pub fn noise(mut i: RgbaImage, noise_type: NoiseType, a: f32, b: u32) -> RgbaImage {
     match noise_type {
         NoiseType::Gaussian => {
-            gaussian_noise_mut(&mut i, 0.1, 0.5, rand::thread_rng().gen_range(1..1000000));
+            gaussian_noise_mut(&mut i, ((a as f64 * b as f64) % 100.0) / 100.0, a as f64, b.clone() as u64);
         },
         NoiseType::SaltPepper => {
-            salt_and_pepper_noise_mut(&mut i, 0.5, rand::thread_rng().gen_range(1..1000000));
+            salt_and_pepper_noise_mut(&mut i, a as f64, b.clone() as u64);
         }
     }
     i

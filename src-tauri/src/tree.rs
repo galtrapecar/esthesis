@@ -1,7 +1,9 @@
-use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
-use rand::Rng;
+use std::fs;
 
-use crate::{sets::{FUNCTION_SET, FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*};
+use image::{Rgba, imageops::FilterType, RgbaImage, Pixel, io::Reader, ImageBuffer};
+use rand::{Rng, seq::IteratorRandom};
+
+use crate::{sets::{FUNCTION_SET, FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction, IMAGE_TERMINAL_SET, EImage, STAMP_IMAGE_TERMINAL_SET}, functions::*, PATHS};
 
 #[derive(Clone, Debug)]
 enum NodeType {
@@ -16,6 +18,7 @@ struct NodeValue {
     coordinate: Option<[i64; 2]>,
     rgba8: Option<Rgba<u8>>,
     image: Option<RgbaImage>,
+    stamp: Option<RgbaImage>,
     resize_filter: Option<FilterType>,
     noise: Option<NoiseType>
 }
@@ -27,7 +30,8 @@ impl NodeValue {
             float32: None, 
             coordinate: None, 
             rgba8: None, 
-            image: Some(i), 
+            image: Some(i),
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -38,7 +42,8 @@ impl NodeValue {
             float32: None, 
             coordinate: None, 
             rgba8: None, 
-            image: None, 
+            image: None,
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -50,6 +55,7 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -61,6 +67,7 @@ impl NodeValue {
             coordinate: Some(i), 
             rgba8: None, 
             image: None, 
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -72,6 +79,7 @@ impl NodeValue {
             coordinate: None, 
             rgba8: Some(i), 
             image: None, 
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -83,6 +91,7 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
+            stamp: None,
             resize_filter: Some(i),
             noise: None,
         }
@@ -94,8 +103,21 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
+            stamp: None,
             resize_filter: None,
             noise: Some(i),
+        }
+    }
+    pub fn from_stamp(i: RgbaImage) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: None, 
+            coordinate: None, 
+            rgba8: None, 
+            image: None, 
+            stamp: Some(i),
+            resize_filter: None,
+            noise: None,
         }
     }
 }
@@ -111,6 +133,14 @@ pub struct Node {
 
 fn random_function() -> FUNCTION {
     FUNCTION_SET[rand::thread_rng().gen_range(0..FUNCTION_SET.len())].clone()
+}
+
+fn random_stamp() -> RgbaImage {
+    let path = PATHS.lock().unwrap().get("assets").unwrap().clone();
+    let mut rng = rand::thread_rng();
+    let files = fs::read_dir(path).unwrap();
+    let file = files.choose(&mut rng).unwrap().unwrap();
+    Reader::open(file.path()).unwrap().decode().unwrap().to_rgba8() as RgbaImage
 }
 
 pub fn grow(depth: u32, max_depth: u32) -> Node {
@@ -143,7 +173,11 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                         node_type: NodeType::Terminal,
                         function: None,
                         terminal: Some(ETerminal::Image),
-                        value: Some(NodeValue::from_image(RgbaImage::new(500, 500))),
+                        value: Some(NodeValue::from_image(
+                            RgbaImage::from_fn(1024, 1024, |x, _y| {
+                                image::Rgba([x as u8, x as u8, x as u8, 255])
+                            })
+                        )),
                         args: vec![]
                     }]);
                 }
@@ -192,6 +226,15 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     args: vec![]
                 }]);
             },
+            ETerminal::Stamp => {
+                root.args.append(&mut vec![Node {
+                    node_type: NodeType::Terminal,
+                    function: None,
+                    terminal: Some(ETerminal::ResizeFilter),
+                    value: Some(NodeValue::from_stamp(random_stamp())),
+                    args: vec![]
+                }]);
+            },
             ETerminal::ResizeFilter => {
                 root.args.append(&mut vec![Node {
                     node_type: NodeType::Terminal,
@@ -226,6 +269,7 @@ pub fn interpret(node: Node) -> RgbaImage {
                     float32: None,
                     coordinate: None,
                     rgba8: None,
+                    stamp: None,
                     resize_filter: None,
                     noise: None,
                 }])
@@ -273,7 +317,7 @@ pub fn interpret(node: Node) -> RgbaImage {
             },
             // Noise
             EFunction::Noise => {
-                noise(arguments[0].clone().image.unwrap(), arguments[1].clone().noise.unwrap())
+                noise(arguments[0].clone().image.unwrap(), arguments[1].clone().noise.unwrap(), arguments[2].clone().float32.unwrap(), arguments[3].clone().int32.unwrap() as u32)
             }
         };
     image
