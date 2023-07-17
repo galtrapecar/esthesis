@@ -2,6 +2,8 @@ use image::*;
 use image::imageops::*;
 use image::imageops::colorops::*;
 use imageproc::map::map_pixels;
+use imageproc::noise::{gaussian_noise_mut, salt_and_pepper_noise_mut};
+use rand::Rng;
 
 // Overlay
 
@@ -86,5 +88,25 @@ pub fn gradient(mut i: RgbaImage, start: Rgba<u8>, stop: Rgba<u8>) -> RgbaImage 
     let j = i.clone();
     horizontal_gradient(&mut i, &start, &stop);
     i = add(j, i);
+    i
+}
+
+// Noise
+
+#[derive(Clone, Copy, Debug)]
+pub enum NoiseType {
+    Gaussian,
+    SaltPepper
+}
+
+pub fn noise(mut i: RgbaImage, noise_type: NoiseType) -> RgbaImage {
+    match noise_type {
+        NoiseType::Gaussian => {
+            gaussian_noise_mut(&mut i, 0.1, 0.5, rand::thread_rng().gen_range(1..1000000));
+        },
+        NoiseType::SaltPepper => {
+            salt_and_pepper_noise_mut(&mut i, 0.5, rand::thread_rng().gen_range(1..1000000));
+        }
+    }
     i
 }

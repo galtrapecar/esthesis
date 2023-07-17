@@ -18,7 +18,9 @@ pub enum EFunction {
     FlipHorizontal,
     FlipVertical,
     // Draw
-    Gradient
+    Gradient,
+    // Noise
+    Noise,
 }
 
 #[derive(Clone, Debug)]
@@ -29,6 +31,7 @@ pub enum ETerminal {
     Rgba8,
     Image,
     ResizeFilter,
+    NoiseType,
 }
 
 #[derive(Clone, Debug)]
@@ -104,6 +107,13 @@ lazy_static! {
             function: EFunction::Gradient,
             arity: 3,
             args: vec![ETerminal::Image, ETerminal::Rgba8, ETerminal::Rgba8],
+        },
+        // Noise
+        FUNCTION {
+            name: "Noise".to_string(),
+            function: EFunction::Noise,
+            arity: 2,
+            args: vec![ETerminal::Image, ETerminal::NoiseType],
         },
     ]);
 }

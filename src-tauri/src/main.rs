@@ -13,7 +13,7 @@ fn main() {
         .setup(|app| {
             let path = app.handle().path_resolver().app_data_dir().unwrap();
 
-            let inn = Reader::open(path.join("img2.png"))?.decode()?.to_rgba8();
+            // let inn = Reader::open(path.join("img2.png"))?.decode()?.to_rgba8();
 
             let root = grow(2, 6);
 

@@ -17,6 +17,7 @@ struct NodeValue {
     rgba8: Option<Rgba<u8>>,
     image: Option<RgbaImage>,
     resize_filter: Option<FilterType>,
+    noise: Option<NoiseType>
 }
 
 impl NodeValue {
@@ -27,7 +28,8 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: Some(i), 
-            resize_filter: None 
+            resize_filter: None,
+            noise: None,
         }
     }
     pub fn from_int32(i: i32) -> Self {
@@ -37,7 +39,8 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
-            resize_filter: None 
+            resize_filter: None,
+            noise: None,
         }
     }
     pub fn from_float32(i: f32) -> Self {
@@ -47,7 +50,8 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
-            resize_filter: None 
+            resize_filter: None,
+            noise: None,
         }
     }
     pub fn from_coordinate(i: [i64; 2]) -> Self {
@@ -57,7 +61,8 @@ impl NodeValue {
             coordinate: Some(i), 
             rgba8: None, 
             image: None, 
-            resize_filter: None 
+            resize_filter: None,
+            noise: None,
         }
     }
     pub fn from_rgba8(i: Rgba<u8>) -> Self {
@@ -67,7 +72,8 @@ impl NodeValue {
             coordinate: None, 
             rgba8: Some(i), 
             image: None, 
-            resize_filter: None 
+            resize_filter: None,
+            noise: None,
         }
     }
     pub fn from_resize_filter(i: FilterType) -> Self {
@@ -77,7 +83,19 @@ impl NodeValue {
             coordinate: None, 
             rgba8: None, 
             image: None, 
-            resize_filter: Some(i) 
+            resize_filter: Some(i),
+            noise: None,
+        }
+    }
+    pub fn from_noise_type(i: NoiseType) -> Self {
+        NodeValue { 
+            int32: None, 
+            float32: None, 
+            coordinate: None, 
+            rgba8: None, 
+            image: None, 
+            resize_filter: None,
+            noise: Some(i),
         }
     }
 }
@@ -183,6 +201,15 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     args: vec![]
                 }]);
             },
+            ETerminal::NoiseType => {
+                root.args.append(&mut vec![Node {
+                    node_type: NodeType::Terminal,
+                    function: None,
+                    terminal: Some(ETerminal::NoiseType),
+                    value: Some(NodeValue::from_noise_type([NoiseType::Gaussian, NoiseType::SaltPepper][rand::thread_rng().gen_range(0..2)])),
+                    args: vec![]
+                }]);
+            },
         }
     }
     root
@@ -200,6 +227,7 @@ pub fn interpret(node: Node) -> RgbaImage {
                     coordinate: None,
                     rgba8: None,
                     resize_filter: None,
+                    noise: None,
                 }])
             },
             NodeType::Terminal => {
@@ -242,6 +270,10 @@ pub fn interpret(node: Node) -> RgbaImage {
             // Draw
             EFunction::Gradient => {
                 gradient(arguments[0].clone().image.unwrap(), arguments[1].clone().rgba8.unwrap(), arguments[2].rgba8.unwrap())
+            },
+            // Noise
+            EFunction::Noise => {
+                noise(arguments[0].clone().image.unwrap(), arguments[1].clone().noise.unwrap())
             }
         };
     image
