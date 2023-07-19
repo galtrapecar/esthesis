@@ -23,7 +23,7 @@ pub enum EFunction {
     Noise,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ETerminal {
     Int32,
     Float32,

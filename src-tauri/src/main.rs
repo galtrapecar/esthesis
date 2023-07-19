@@ -4,9 +4,12 @@
 mod functions;
 mod tree;
 mod sets;
+mod mutations;
+mod random;
 
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
+use mutations::mutate;
 use tree::{grow, interpret};
 
 use lazy_static::lazy_static;
@@ -28,7 +31,11 @@ fn main() {
             // let inn = Reader::open(path.join("img2.png"))?.decode()?.to_rgba8();
 
             for i in 0..10 {
-                let root = grow(2, 20);
+                let root = grow(2, 6);
+
+                mutate(root);
+
+                break;
 
                 let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(root);
                 out.save(data.join(format!("out{}.png", i)))?;

@@ -1,26 +1,26 @@
-use std::fs;
+use std::{cell::RefCell, rc::Rc};
 
-use image::{Rgba, imageops::FilterType, RgbaImage, Pixel, io::Reader, ImageBuffer};
-use rand::{Rng, seq::IteratorRandom};
+use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
+use rand::Rng;
 
-use crate::{sets::{FUNCTION_SET, FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction, IMAGE_TERMINAL_SET, EImage, STAMP_IMAGE_TERMINAL_SET}, functions::*, PATHS};
+use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}};
 
-#[derive(Clone, Debug)]
-enum NodeType {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum NodeType {
     Function,
     Terminal,
 }
 
 #[derive(Clone, Debug)]
-struct NodeValue {
-    int32: Option<i32>,
-    float32: Option<f32>,
-    coordinate: Option<[i64; 2]>,
-    rgba8: Option<Rgba<u8>>,
-    image: Option<RgbaImage>,
-    stamp: Option<RgbaImage>,
-    resize_filter: Option<FilterType>,
-    noise: Option<NoiseType>
+pub struct NodeValue {
+    pub int32: Option<i32>,
+    pub float32: Option<f32>,
+    pub coordinate: Option<[i64; 2]>,
+    pub rgba8: Option<Rgba<u8>>,
+    pub image: Option<RgbaImage>,
+    pub stamp: Option<RgbaImage>,
+    pub resize_filter: Option<FilterType>,
+    pub noise: Option<NoiseType>
 }
 
 impl NodeValue {
@@ -124,26 +124,16 @@ impl NodeValue {
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    node_type: NodeType,
-    function: Option<FUNCTION>,
-    terminal: Option<ETerminal>,
-    value: Option<NodeValue>,
-    args: Vec<Node>,
+    pub node_type: NodeType,
+    pub function: Option<FUNCTION>,
+    pub terminal: Option<ETerminal>,
+    pub value: Option<NodeValue>,
+    pub args: Vec<NodeRef>,
 }
 
-fn random_function() -> FUNCTION {
-    FUNCTION_SET[rand::thread_rng().gen_range(0..FUNCTION_SET.len())].clone()
-}
+type NodeRef = Rc<RefCell<Node>>;
 
-fn random_stamp() -> RgbaImage {
-    let path = PATHS.lock().unwrap().get("assets").unwrap().clone();
-    let mut rng = rand::thread_rng();
-    let files = fs::read_dir(path).unwrap();
-    let file = files.choose(&mut rng).unwrap().unwrap();
-    Reader::open(file.path()).unwrap().decode().unwrap().to_rgba8() as RgbaImage
-}
-
-pub fn grow(depth: u32, max_depth: u32) -> Node {
+pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
     // initial node
     let mut root = Node {
         node_type: NodeType::Function,
@@ -169,17 +159,7 @@ pub fn grow(depth: u32, max_depth: u32) -> Node {
                     continue;
                 } else {
                 // 10% probability of creating a final image terminal
-                    root.args.append(&mut vec![Node {
-                        node_type: NodeType::Terminal,
-                        function: None,
-                        terminal: Some(ETerminal::Image),
-                        value: Some(NodeValue::from_image(
-                            RgbaImage::from_fn(1024, 1024, |x, _y| {
-                                image::Rgba([x as u8, x as u8, x as u8, 255])
-                            })
-                        )),
-                        args: vec![]
-                    }]);
+                    root.args.append(&mut vec![random_image()]);
                 }
             },
             ETerminal::Int32 => {
