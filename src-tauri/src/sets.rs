@@ -1,6 +1,6 @@
 use std::vec;
 
-use image::{imageops::FilterType, RgbaImage};
+use image::imageops::FilterType;
 use lazy_static::lazy_static;
 
 #[derive(Clone, Debug)]
