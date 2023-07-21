@@ -1,6 +1,6 @@
 // Img => fn
 
-use std::{cell::RefCell, borrow::Borrow, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use image::{Rgba, Pixel};
 use rand::Rng;
@@ -14,8 +14,9 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
         match arg {
             ETerminal::Image => {
                 if image_token == 1 {
-                    args.append(&mut vec![image.clone()]);
-                    image_token -= 1;
+                    let image: Node = image.borrow().clone();
+                    args.append(&mut vec![Rc::new(RefCell::new(image))]);
+                    image_token = 0;
                 } else {
                     args.append(&mut vec![Rc::new(RefCell::new(random_image()))]);
                 }
@@ -108,8 +109,12 @@ pub fn image_to_function(node: &mut NodeRef) {
 
     let function = random_function();
 
+    let args = populate_args(function.clone(), copy);
+
     node.borrow_mut().terminal = None;
     node.borrow_mut().function = Some(function.clone());
     node.borrow_mut().node_type = NodeType::Function;
-    node.borrow_mut().args = populate_args(function.clone(), copy);
+    node.borrow_mut().args = args.clone();
+
+    println!("{:?}", args.len());
 }

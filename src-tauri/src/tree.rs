@@ -3,7 +3,7 @@ use std::{cell::{RefCell, RefMut}, rc::Rc, borrow::BorrowMut};
 use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::image_to_function, refstack::Stack};
+use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::image_to_function};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -16,21 +16,18 @@ impl Genotype {
     }
 
     fn count_nodes(tree: Node) -> usize {
-        if tree.args.len() == 0 {
-            return 1;
-        }
-        let mut count: usize = tree.args.len();
-        for node in tree.args.iter() {
-            if node.borrow().terminal.is_none() {
-                count += Self::count_nodes(node.borrow().clone());
-                continue;
-            }
-            if node.borrow().terminal.is_some() && node.borrow().terminal.clone().unwrap() == ETerminal::Image {
-                count += Self::count_nodes(node.borrow().clone());
-                continue;
+        let mut count: usize = 1;
+        let mut stack = vec![tree];
+
+        while stack.len() > 0 {
+            let current = stack.pop().unwrap();
+
+            for arg in current.args {
+                stack.push(arg.borrow().clone());
+                count += 1;
             }
         }
-        return count;
+        count
     }
 
     pub fn size(&self) -> usize {
@@ -44,20 +41,25 @@ impl Genotype {
     pub fn mutate(&mut self) {
         let size = self.size();
         let mut random: usize = rand::thread_rng().gen_range(0..size);
-        let mut stack: Stack<NodeRef> = Stack::new(&self.root);
+        let mut stack: Vec<Rc<RefCell<Node>>> = vec![];
+        stack.push(Rc::clone(&self.root));
 
         let mut current_node_ref= None;
-         
-        while stack.element.is_some() {
+        
+        while stack.len() > 0 {
             if random == 0 {
                 break;
             }
-            let current_node = Rc::clone(stack.pop().unwrap());
+            let current_node = Rc::clone(&stack.pop().unwrap());
             for arg in current_node.borrow().args.iter() {
                 current_node_ref = Some(Rc::clone(arg));
+                if random == 0 {
+                    break;
+                }
                 if current_node.clone().borrow().terminal.is_none() || *current_node.clone().borrow().terminal.as_ref().unwrap() == ETerminal::Image {
-                    stack.push(arg);
+                    stack.push(Rc::clone(arg));
                     random -= 1;
+                    break;
                 }
             }
         }

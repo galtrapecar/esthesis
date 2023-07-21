@@ -6,7 +6,6 @@ mod tree;
 mod sets;
 mod mutations;
 mod random;
-mod refstack;
 
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
@@ -14,8 +13,14 @@ use tree::{interpret, Genotype};
 
 use lazy_static::lazy_static;
 
+use crate::mutations::image_to_function;
+
 lazy_static! {
     pub static ref PATHS: Mutex<HashMap<String, PathBuf>> = Mutex::new(HashMap::new());
+}
+
+fn test() {
+    
 }
 
 fn main() {
@@ -39,6 +44,7 @@ fn main() {
                 out.save(data.join(format!("out1.png")))?;
 
                 genotype.mutate();
+
 
                 println!("{}", genotype.size());
 
