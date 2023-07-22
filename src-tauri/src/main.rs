@@ -44,6 +44,9 @@ fn main() {
                 out.save(data.join(format!("out1.png")))?;
 
                 genotype.mutate();
+                genotype.mutate();
+                genotype.mutate();
+                genotype.mutate();
 
 
                 println!("{}", genotype.size());
