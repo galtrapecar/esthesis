@@ -1,28 +1,28 @@
 // Img => fn
 
-use std::{cell::RefCell, rc::Rc};
+
+use std::{sync::{Arc, Mutex}, ops::DerefMut};
 
 use image::{Rgba, Pixel};
 use rand::Rng;
 
 use crate::{tree::{Node, NodeType, NodeValue, NodeRef}, sets::{ETerminal, RESIZE_FILTER_SET, FUNCTION}, random::{random_function, random_stamp, random_image}, functions::NoiseType};
 
-fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
+fn populate_args(function: FUNCTION, image: Node) -> Vec<NodeRef> {
     let mut args: Vec<NodeRef> = vec![];
     let mut image_token: u8 = 1;
     for arg in function.args {
         match arg {
             ETerminal::Image => {
                 if image_token == 1 {
-                    let image: Node = image.borrow().clone();
-                    args.append(&mut vec![Rc::new(RefCell::new(image))]);
+                    args.append(&mut vec![Arc::new(Mutex::new(image.clone()))]);
                     image_token = 0;
                 } else {
-                    args.append(&mut vec![Rc::new(RefCell::new(random_image()))]);
+                    args.append(&mut vec![Arc::new(Mutex::new(random_image()))]);
                 }
             },
             ETerminal::Int32 => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Int32),
@@ -31,7 +31,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::Float32 => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Float32),
@@ -40,7 +40,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::Coordinate => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Coordinate),
@@ -52,7 +52,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::Rgba8 => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Rgba8),
@@ -66,7 +66,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::Stamp => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::ResizeFilter),
@@ -75,7 +75,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::ResizeFilter => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::ResizeFilter),
@@ -84,7 +84,7 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
                 }))]);
             },
             ETerminal::NoiseType => {
-                args.append(&mut vec![Rc::new(RefCell::new(Node {
+                args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::NoiseType),
@@ -98,23 +98,25 @@ fn populate_args(function: FUNCTION, image: NodeRef) -> Vec<NodeRef> {
 }
 
 pub fn image_to_function(node: &mut NodeRef) {
-    let clone = Rc::clone(&node);
-    if clone.clone().as_ref().borrow().node_type != NodeType::Terminal || (clone.clone().as_ref().borrow().terminal.is_some() && clone.clone().as_ref().borrow().terminal.clone().unwrap() != ETerminal::Image) {
+    let mut guard = node.lock().unwrap();
+    let mut_node = guard.deref_mut();
+    
+    if mut_node.clone().node_type != NodeType::Terminal || (mut_node.clone().terminal.is_some() && mut_node.clone().terminal.clone().unwrap() != ETerminal::Image) {
         return;
     }
 
-    println!("image");
-
-    let copy = node.clone();
+    println!("mutate");
 
     let function = random_function();
 
-    let args = populate_args(function.clone(), copy);
+    let args = populate_args(function.clone(), mut_node.clone());
 
-    node.borrow_mut().terminal = None;
-    node.borrow_mut().function = Some(function.clone());
-    node.borrow_mut().node_type = NodeType::Function;
-    node.borrow_mut().args = args.clone();
+    mut_node.terminal = None;
+    mut_node.function = Some(function.clone());
+    mut_node.node_type = NodeType::Function;
+    mut_node.args = args.clone();
+
+    drop(guard);
 
     println!("{:?}", args.len());
 }
