@@ -181,8 +181,8 @@ impl NodeValue {
             float32: None, 
             coordinate: None, 
             rgba8: None, 
-            image: None, 
-            stamp: Some(i),
+            image: Some(i), 
+            stamp: None,
             resize_filter: None,
             noise: None,
         }
@@ -274,10 +274,11 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                 }))]);
             },
             ETerminal::Stamp => {
+                println!("stamp");
                 root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
-                    terminal: Some(ETerminal::ResizeFilter),
+                    terminal: Some(ETerminal::Image),
                     value: Some(NodeValue::from_stamp(random_stamp())),
                     args: vec![]
                 }))]);
@@ -306,8 +307,6 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
 }
 
 pub fn interpret(node: Node) -> RgbaImage {
-    println!("image");
-
     let mut arguments: Vec<NodeValue> = vec![];
     for child in node.args {
         let guard = child.lock().unwrap();
@@ -337,6 +336,7 @@ pub fn interpret(node: Node) -> RgbaImage {
                 add(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap())
             },
             EFunction::Stamp => {
+                println!("stamp");
                 stamp(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap(), Some(arguments[2].coordinate.unwrap()))
             },
             EFunction::Tile => {

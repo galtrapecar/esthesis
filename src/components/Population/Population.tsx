@@ -3,7 +3,7 @@ import { fitness, init, new_population } from "../../genetic/genetic";
 import './Population.css'
 import { IGenotype } from "../../genetic/helpers";
 
-export function Population({setLoading}: {setLoading: React.Dispatch<React.SetStateAction<boolean>>}) {
+export function Population() {
     const [phenotypes, setPhenotypes] = useState(init())
     const firedRef = useRef(false);
 
@@ -12,7 +12,7 @@ export function Population({setLoading}: {setLoading: React.Dispatch<React.SetSt
         firedRef.current = true
 
         // window.addEventListener('click', evolve)
-        evolve().then(_ => setLoading(false))
+        evolve()
     }, [])
 
     function evolve() {
@@ -21,12 +21,16 @@ export function Population({setLoading}: {setLoading: React.Dispatch<React.SetSt
 
             let i = 0
             while (i < 10000) {
-                await new Promise(r => setTimeout(r, 20));
+                await new Promise(r => setTimeout(r, 20))
         
                 let population = [...new_population(genotypes)]
                 setPhenotypes(population)
 
-                if (population.length == 16) break
+                if (population.length == 16) {
+                    await new Promise(r => setTimeout(r, 2000))
+                    evolve()
+                    break
+                }
                 
                 genotypes = population
 

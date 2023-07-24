@@ -69,7 +69,7 @@ fn populate_args(function: FUNCTION, image: Node) -> Vec<NodeRef> {
                 args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
-                    terminal: Some(ETerminal::ResizeFilter),
+                    terminal: Some(ETerminal::Stamp),
                     value: Some(NodeValue::from_stamp(random_stamp())),
                     args: vec![]
                 }))]);
@@ -105,8 +105,6 @@ pub fn image_to_function(node: &mut NodeRef) {
         return;
     }
 
-    println!("mutate");
-
     let function = random_function();
 
     let args = populate_args(function.clone(), mut_node.clone());
@@ -117,6 +115,4 @@ pub fn image_to_function(node: &mut NodeRef) {
     mut_node.args = args.clone();
 
     drop(guard);
-
-    println!("{:?}", args.len());
 }
