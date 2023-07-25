@@ -1,0 +1,19 @@
+.Button {
+    padding: 10px 20px;
+    border-radius: 3px;
+    background-color: var(--clr-blue);
+    color: var(--clr-beige);
+    cursor: pointer;
+    transition: transform .2s;
+}
+
+.Button.disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+
+.Button:hover {
+    transform: scale(1.1);
+}

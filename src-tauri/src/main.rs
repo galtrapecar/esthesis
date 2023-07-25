@@ -9,11 +9,11 @@ mod random;
 
 use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread};
 
-use image::{io::Reader, RgbaImage};
+use image::io::Reader;
 use rand::{distributions::Alphanumeric, Rng};
 use regex::Regex;
 use tauri::{Window, Manager};
-use tree::{interpret, Genotype, NodeRef};
+use tree::{interpret, Genotype};
 
 use lazy_static::lazy_static;
 
@@ -62,20 +62,34 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref BEST_OF_POPULATION: Mutex<Vec<Mutex<Genotype>>> = Mutex::new(vec![]);
+    pub static ref BEST_OF_POPULATION: Mutex<HashMap<String, Mutex<Genotype>>> = Mutex::new(HashMap::new());
 }
 
 lazy_static! {
     pub static ref POPULATION_COUNTER: Mutex<i32> = Mutex::new(0);
 }
 
+lazy_static! {
+    pub static ref BEST_OF_POPULATION_COUNTER: Mutex<i32> = Mutex::new(0);
+}
+
 static WINDOW: OnceLock<Window> = OnceLock::new();
+
+fn update_best_of_population_counter(population_size: i32) {
+    let mut best_of_population_counter = BEST_OF_POPULATION_COUNTER.lock().unwrap();
+    *best_of_population_counter += 1;
+    if best_of_population_counter.clone() == population_size {
+        let _ = WINDOW.get().unwrap().emit("evolved", "");
+        *best_of_population_counter = 0;
+    }
+}
 
 fn update_population_counter(population_size: i32) {
     let mut population_counter = POPULATION_COUNTER.lock().unwrap();
     *population_counter += 1;
     if population_counter.clone() == population_size {
-        let _ =WINDOW.get().unwrap().emit("loading", "");
+        let _ = WINDOW.get().unwrap().emit("loading", "");
+        *population_counter = 0;
     }
 }
 
@@ -114,6 +128,49 @@ fn generate_population() {
     }
 }
 
+// Thanks to https://stackoverflow.com/a/52367953
+fn string_to_static_str(s: String) -> &'static str {
+    Box::leak(s.into_boxed_str())
+}
+
+#[tauri::command(async)]
+fn evolve_population(selection: [String; 2]) {
+    let population_size = 8;
+
+    let mut threads = vec![];
+
+    let path_borrow = PATHS.lock().unwrap();
+    let path = path_borrow.get("data").unwrap();
+
+    fs::remove_dir_all(path).unwrap();
+    fs::create_dir(path).unwrap();
+
+    let clone = selection.clone();
+    let selection = [string_to_static_str(clone[0].clone()), string_to_static_str(clone[1].clone())];
+
+    for i in 0..population_size {
+        let handle = thread::spawn(move || {
+            let population = POPULATION.lock().unwrap();
+            let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
+            let index = if i % 2 == 0 { 0 } else { 1 };
+            let genotype = population.get(selection.clone()[index]).unwrap().lock().unwrap();
+
+            let str: String = rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect();
+            let mut new_genotype = genotype.clone();
+            new_genotype.mutate(); 
+
+            best_of_population.insert(str.clone(), Mutex::new(new_genotype.clone()));
+
+            let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(new_genotype.clone().get_root());
+            let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
+
+            update_best_of_population_counter(population_size);
+            println!("evolved population {}", i);
+        });
+        threads.push(handle);
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![])
@@ -133,7 +190,7 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_phenotypes, generate_population])
+        .invoke_handler(tauri::generate_handler![get_phenotypes, generate_population, evolve_population])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
