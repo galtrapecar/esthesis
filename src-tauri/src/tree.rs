@@ -1,9 +1,9 @@
 use std::{borrow::BorrowMut, sync::{Arc, Mutex}};
 
-use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
+use image::{Rgba, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal, swap_image, swap_function}};
+use crate::{sets::{FUNCTION, ETerminal, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal, swap_image, swap_function, grow_branch}};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -58,8 +58,14 @@ impl Genotype {
                 if random == 0 {
                     break;
                 }
-                stack.push(Arc::clone(arg));
-                random -= 1;
+                if guard.clone().terminal.is_some() && guard.clone().terminal.unwrap() != ETerminal::Image {
+                    if rand::thread_rng().gen_range(0..=100) > 20 { return; }
+                    stack.push(Arc::clone(arg));
+                    random -= 1;
+                } else {
+                    stack.push(Arc::clone(arg));
+                    random -= 1;
+                }
             }
         }
 
@@ -67,19 +73,26 @@ impl Genotype {
         let lock = current_node_ref.clone().unwrap().lock().unwrap().clone();
         match lock.clone().node_type {
             NodeType::Function => {
+                println!("swapping function");
                 swap_function(current_node_ref.unwrap().borrow_mut());
             },
             NodeType::Terminal => {
                 match lock.clone().terminal.unwrap() {
                     ETerminal::Image => {
                         let coinflip = rand::thread_rng().gen_range(0..=100);
-                        if coinflip > 60 {
+                        if coinflip > 66 {
+                            println!("image to function");
                             image_to_function(current_node_ref.unwrap().borrow_mut());
-                        } else {
+                        } else if coinflip > 33 {
+                            println!("swapping image");
                             swap_image(current_node_ref.unwrap().borrow_mut());
+                        } else {
+                            println!("growing branch");
+                            grow_branch(current_node_ref.unwrap().borrow_mut());
                         }
                     },
                     _ => {
+                        println!("swapping terminal");
                         swap_terminal(current_node_ref.unwrap().borrow_mut());
                     }
                 }
@@ -103,7 +116,7 @@ pub struct NodeValue {
     pub rgba8: Option<Rgba<u8>>,
     pub image: Option<RgbaImage>,
     pub stamp: Option<RgbaImage>,
-    pub resize_filter: Option<FilterType>,
+    // pub resize_filter: Option<FilterType>,
     pub noise: Option<NoiseType>
 }
 
@@ -116,7 +129,7 @@ impl NodeValue {
             rgba8: None, 
             image: Some(i),
             stamp: None,
-            resize_filter: None,
+            // // resize_filter: None,
             noise: None,
         }
     }
@@ -128,7 +141,7 @@ impl NodeValue {
             rgba8: None, 
             image: None,
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: None,
         }
     }
@@ -140,7 +153,7 @@ impl NodeValue {
             rgba8: None, 
             image: None, 
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: None,
         }
     }
@@ -152,7 +165,7 @@ impl NodeValue {
             rgba8: None, 
             image: None, 
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: None,
         }
     }
@@ -164,22 +177,22 @@ impl NodeValue {
             rgba8: Some(i), 
             image: None, 
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: None,
         }
     }
-    pub fn from_resize_filter(i: FilterType) -> Self {
-        NodeValue { 
-            int32: None, 
-            float32: None, 
-            coordinate: None, 
-            rgba8: None, 
-            image: None, 
-            stamp: None,
-            resize_filter: Some(i),
-            noise: None,
-        }
-    }
+    // pub fn from_resize_filter(i: FilterType) -> Self {
+    //     NodeValue { 
+    //         int32: None, 
+    //         float32: None, 
+    //         coordinate: None, 
+    //         rgba8: None, 
+    //         image: None, 
+    //         stamp: None,
+    //         resize_filter: Some(i),
+    //         noise: None,
+    //     }
+    // }
     pub fn from_noise_type(i: NoiseType) -> Self {
         NodeValue { 
             int32: None, 
@@ -188,7 +201,7 @@ impl NodeValue {
             rgba8: None, 
             image: None, 
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: Some(i),
         }
     }
@@ -200,7 +213,7 @@ impl NodeValue {
             rgba8: None, 
             image: Some(i), 
             stamp: None,
-            resize_filter: None,
+            // resize_filter: None,
             noise: None,
         }
     }
@@ -300,15 +313,15 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                     args: vec![]
                 }))]);
             },
-            ETerminal::ResizeFilter => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
-                    node_type: NodeType::Terminal,
-                    function: None,
-                    terminal: Some(ETerminal::ResizeFilter),
-                    value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
-                    args: vec![]
-                }))]);
-            },
+            // ETerminal::ResizeFilter => {
+            //     root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+            //         node_type: NodeType::Terminal,
+            //         function: None,
+            //         terminal: Some(ETerminal::ResizeFilter),
+            //         value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
+            //         args: vec![]
+            //     }))]);
+            // },
             ETerminal::NoiseType => {
                 root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
@@ -337,7 +350,7 @@ pub fn interpret(node: Node) -> RgbaImage {
                     coordinate: None,
                     rgba8: None,
                     stamp: None,
-                    resize_filter: None,
+                    // resize_filter: None,
                     noise: None,
                 }]);
             },
@@ -354,10 +367,10 @@ pub fn interpret(node: Node) -> RgbaImage {
             },
             EFunction::Stamp => {
                 // println!("stamp");
-                stamp(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap(), Some(arguments[2].coordinate.unwrap()))
+                stamp(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap(), Some(arguments[2].coordinate.unwrap()), arguments[3].clone().float32.unwrap())
             },
             EFunction::Tile => {
-                tile(arguments[0].clone().image.unwrap(), arguments[1].clone().float32.unwrap(), arguments[2].resize_filter.unwrap())
+                tile(arguments[0].clone().image.unwrap(), arguments[1].clone().float32.unwrap())
             },
             // Color
             EFunction::Brighten => {

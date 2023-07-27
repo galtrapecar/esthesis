@@ -14,7 +14,9 @@ pub fn add(mut i: RgbaImage, mut j: RgbaImage) -> RgbaImage {
     i
 }
 
-pub fn stamp(mut i: RgbaImage, j: RgbaImage, xy: Option<[i64; 2]>) -> RgbaImage {
+pub fn stamp(mut i: RgbaImage, j: RgbaImage, xy: Option<[i64; 2]>, scale: f32) -> RgbaImage {
+    let j = resize(j, scale, FilterType::Nearest);
+
     if xy.is_some() {
         overlay(&mut i, &j, xy.unwrap()[0], xy.unwrap()[1]);
     } else {
@@ -23,8 +25,8 @@ pub fn stamp(mut i: RgbaImage, j: RgbaImage, xy: Option<[i64; 2]>) -> RgbaImage 
     i
 }
 
-pub fn tile(mut i: RgbaImage, scale: f32, filter: FilterType) -> RgbaImage {
-    let j = resize(i.clone(), scale, filter);
+pub fn tile(mut i: RgbaImage, scale: f32) -> RgbaImage {
+    let j = resize(i.clone(), scale, FilterType::Nearest);
     imageops::tile(&mut i, &j);
     i
 }

@@ -11,7 +11,9 @@ use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::
 
 use image::io::Reader;
 use rand::{distributions::Alphanumeric, Rng};
+use random::_random_image;
 use regex::Regex;
+use sets::IMAGE_TERMINAL_SET;
 use tauri::{Window, Manager};
 use tree::{interpret, Genotype};
 
@@ -107,8 +109,6 @@ fn update_population_counter(population_size: i32) {
 #[tauri::command(async)]
 fn generate_population() {
     let population_size = 8;
-    let grow_depth = 2;
-    let grow_max_depth = 6;
 
     let mut threads = vec![];
 
@@ -169,6 +169,8 @@ fn evolve_population(selection: [String; 2]) {
             let genotype = population.get(selection.clone()[index]).unwrap();
             let genotype = genotype.lock().unwrap().clone();
 
+            println!("{:p}", &genotype);
+
             let str: String = rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect();
             let mut new_genotype = genotype.clone();
             new_genotype.mutate(); 
@@ -200,6 +202,9 @@ fn main() {
 
             PATHS.lock().unwrap().insert("data".to_string(), data.clone());
             PATHS.lock().unwrap().insert("assets".to_string(), assets.clone());
+
+            // let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = IMAGE_TERMINAL_SET[4].clone();
+            // let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", "test")));
 
             generate_population();
 

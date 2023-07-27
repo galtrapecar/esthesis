@@ -6,7 +6,7 @@ use std::{sync::{Arc, Mutex}, ops::DerefMut};
 use image::{Rgba, Pixel};
 use rand::Rng;
 
-use crate::{tree::{Node, NodeType, NodeValue, NodeRef}, sets::{ETerminal, RESIZE_FILTER_SET, FUNCTION}, random::{random_function, random_stamp, random_image}, functions::NoiseType};
+use crate::{tree::{Node, NodeType, NodeValue, NodeRef, grow}, sets::{ETerminal, FUNCTION}, random::{random_function, random_stamp, random_image}, functions::NoiseType};
 
 fn populate_args(function: FUNCTION, mut images: Vec<Node>) -> Vec<NodeRef> {
     let mut args: Vec<NodeRef> = vec![];
@@ -16,6 +16,8 @@ fn populate_args(function: FUNCTION, mut images: Vec<Node>) -> Vec<NodeRef> {
                 if images.len() != 0 {
                     let image = images.remove(rand::thread_rng().gen_range(0..images.len()));
                     args.append(&mut vec![Arc::new(Mutex::new(image.clone()))]);
+                } else {
+                    args.append(&mut vec![Arc::new(Mutex::new(random_image()))]);
                 }
             },
             ETerminal::Int32 => {
@@ -71,15 +73,15 @@ fn populate_args(function: FUNCTION, mut images: Vec<Node>) -> Vec<NodeRef> {
                     args: vec![]
                 }))]);
             },
-            ETerminal::ResizeFilter => {
-                args.append(&mut vec![Arc::new(Mutex::new(Node {
-                    node_type: NodeType::Terminal,
-                    function: None,
-                    terminal: Some(ETerminal::ResizeFilter),
-                    value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
-                    args: vec![]
-                }))]);
-            },
+            // ETerminal::ResizeFilter => {
+            //     args.append(&mut vec![Arc::new(Mutex::new(Node {
+            //         node_type: NodeType::Terminal,
+            //         function: None,
+            //         terminal: Some(ETerminal::ResizeFilter),
+            //         value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
+            //         args: vec![]
+            //     }))]);
+            // },
             ETerminal::NoiseType => {
                 args.append(&mut vec![Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
@@ -145,7 +147,7 @@ pub fn swap_terminal(node: &mut NodeRef) {
         ]))),
         ETerminal::Image => {},
         ETerminal::Stamp => mut_node.value = Some(NodeValue::from_stamp(random_stamp())),
-        ETerminal::ResizeFilter => mut_node.value = Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
+        // ETerminal::ResizeFilter => mut_node.value = Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
         ETerminal::NoiseType => mut_node.value = Some(NodeValue::from_noise_type([NoiseType::Gaussian, NoiseType::SaltPepper][rand::thread_rng().gen_range(0..2)])),
     }
 
@@ -178,4 +180,21 @@ pub fn swap_function(node: &mut NodeRef) {
     mut_node.args = populate_args(function, images);
 
     drop(guard);
+}
+
+pub fn grow_branch(node: &mut NodeRef) {
+    let mut guard = node.lock().unwrap();
+    let mut_node = guard.deref_mut();
+
+    // if mut_node.clone().node_type != NodeType::Function || mut_node.clone().terminal.unwrap() != ETerminal::Image {
+    //     return;
+    // }
+
+    if mut_node.clone().terminal.unwrap() != ETerminal::Image {
+        return;
+    }
+
+    let node = grow(2, 3);
+
+    *mut_node = node.lock().unwrap().clone();
 }

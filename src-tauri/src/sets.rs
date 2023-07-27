@@ -33,7 +33,7 @@ pub enum ETerminal {
     Rgba8,
     Image,
     Stamp,
-    ResizeFilter,
+    // ResizeFilter,
     NoiseType,
 }
 
@@ -66,14 +66,15 @@ lazy_static! {
         FUNCTION {
             name: "Stamp".to_string(),
             function: EFunction::Stamp,
-            arity: 3,
-            args: vec![ETerminal::Image, ETerminal::Image, ETerminal::Coordinate],
+            arity: 4,
+            args: vec![ETerminal::Image, ETerminal::Image, ETerminal::Coordinate, ETerminal::Float32],
         },
         FUNCTION {
             name: "Tile".to_string(),
             function: EFunction::Tile,
-            arity: 3,
-            args: vec![ETerminal::Image, ETerminal::Float32, ETerminal::ResizeFilter],
+            arity: 2,
+            // args: vec![ETerminal::Image, ETerminal::Float32, ETerminal::ResizeFilter],
+            args: vec![ETerminal::Image, ETerminal::Float32],
         },
         // Color
         FUNCTION {
@@ -130,18 +131,24 @@ lazy_static! {
     ]);
 }
 
-pub static RESIZE_FILTER_SET: [FilterType; 5] = [
-    FilterType::Nearest,
-    FilterType::CatmullRom,
-    FilterType::Gaussian,
-    FilterType::Lanczos3,
-    FilterType::Triangle,
-];
+// pub static RESIZE_FILTER_SET: [FilterType; 5] = [
+//     FilterType::Nearest,
+//     FilterType::CatmullRom,
+//     FilterType::Gaussian,
+//     FilterType::Lanczos3,
+//     FilterType::Triangle,
+// ];
 
 //RgbaImage::new(1024, 1024)
 
+fn clamp(x: i32) -> u8 {
+    if x < 0 { return 0 as u8; }
+    if x > 255 { return 255 as u8; }
+    return x as u8;
+}
+
 lazy_static! {
-    pub static ref IMAGE_TERMINAL_SET: [RgbaImage; 6] = [
+    pub static ref IMAGE_TERMINAL_SET: [RgbaImage; 7] = [
         // X looping
         RgbaImage::from_fn(1024, 1024, |x, _y| {
             image::Rgba([x as u8, x as u8, x as u8, 255])
@@ -152,25 +159,36 @@ lazy_static! {
         }),
          // X normalized
          RgbaImage::from_fn(1024, 1024, |x, _y| {
-            let xt = x as i32 - 512;
-            image::Rgba([xt as u8, xt as u8, xt as u8, 255])
+            let xt = clamp(x as i32 - 512);
+            image::Rgba([xt, xt, xt, 255])
         }),
          // Y normalized
          RgbaImage::from_fn(1024, 1024, |_x, y| {
-            let yt = y as i32 - 512;
-            image::Rgba([yt as u8, yt as u8, yt as u8, 255])
+            let yt = clamp(y as i32 - 512);
+            image::Rgba([yt, yt, yt, 255])
         }),
         // abs X
         RgbaImage::from_fn(1024, 1024, |x, _y| {
             let xt = x as i32 - 512;
-            let xt = xt.abs();
-            image::Rgba([xt as u8, xt as u8, xt as u8, 255])
+            let xt = clamp(xt.abs());
+            image::Rgba([xt, xt, xt, 255])
         }),
         // abs Y
         RgbaImage::from_fn(1024, 1024, |_x, y| {
             let yt = y as i32 - 512;
-            let yt = yt.abs();
-            image::Rgba([yt as u8, yt as u8, yt as u8, 255])
+            let yt = clamp(yt.abs());
+            image::Rgba([yt, yt, yt, 255])
+        }),
+        // mod X abs Y
+        RgbaImage::from_fn(1024, 1024, |x, y| {
+            let yt = y as i32 - 512;
+            let xt = x as i32 - 512;
+            if yt != 0 {
+                let a = clamp((xt % yt).abs());
+                image::Rgba([a, a, a, 255])
+            } else {
+                image::Rgba([0, 0, 0, 255])
+            }
         }),
     ];
 }
