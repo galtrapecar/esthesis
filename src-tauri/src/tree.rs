@@ -3,7 +3,7 @@ use std::{borrow::BorrowMut, sync::{Arc, Mutex}};
 use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal}};
+use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal, swap_image, swap_function}};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -67,12 +67,17 @@ impl Genotype {
         let lock = current_node_ref.clone().unwrap().lock().unwrap().clone();
         match lock.clone().node_type {
             NodeType::Function => {
-
+                swap_function(current_node_ref.unwrap().borrow_mut());
             },
             NodeType::Terminal => {
                 match lock.clone().terminal.unwrap() {
                     ETerminal::Image => {
-                        image_to_function(current_node_ref.unwrap().borrow_mut());
+                        let coinflip = rand::thread_rng().gen_range(0..=100);
+                        if coinflip > 60 {
+                            image_to_function(current_node_ref.unwrap().borrow_mut());
+                        } else {
+                            swap_image(current_node_ref.unwrap().borrow_mut());
+                        }
                     },
                     _ => {
                         swap_terminal(current_node_ref.unwrap().borrow_mut());

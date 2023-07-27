@@ -8,17 +8,14 @@ use rand::Rng;
 
 use crate::{tree::{Node, NodeType, NodeValue, NodeRef}, sets::{ETerminal, RESIZE_FILTER_SET, FUNCTION}, random::{random_function, random_stamp, random_image}, functions::NoiseType};
 
-fn populate_args(function: FUNCTION, image: Node) -> Vec<NodeRef> {
+fn populate_args(function: FUNCTION, mut images: Vec<Node>) -> Vec<NodeRef> {
     let mut args: Vec<NodeRef> = vec![];
-    let mut image_token: u8 = 1;
     for arg in function.args {
         match arg {
             ETerminal::Image => {
-                if image_token == 1 {
+                if images.len() != 0 {
+                    let image = images.remove(rand::thread_rng().gen_range(0..images.len()));
                     args.append(&mut vec![Arc::new(Mutex::new(image.clone()))]);
-                    image_token = 0;
-                } else {
-                    args.append(&mut vec![Arc::new(Mutex::new(random_image()))]);
                 }
             },
             ETerminal::Int32 => {
@@ -107,7 +104,7 @@ pub fn image_to_function(node: &mut NodeRef) {
 
     let function = random_function();
 
-    let args = populate_args(function.clone(), mut_node.clone());
+    let args = populate_args(function.clone(), vec![mut_node.clone()]);
 
     mut_node.terminal = None;
     mut_node.function = Some(function.clone());
@@ -115,6 +112,17 @@ pub fn image_to_function(node: &mut NodeRef) {
     mut_node.args = args.clone();
 
     drop(guard);
+}
+
+pub fn swap_image(node: &mut NodeRef) {
+    let mut guard = node.lock().unwrap();
+    let mut mut_node = guard.deref_mut();
+
+    if mut_node.clone().node_type != NodeType::Terminal || (mut_node.clone().terminal.is_some() && mut_node.clone().terminal.clone().unwrap() != ETerminal::Image) {
+        return;
+    }
+
+    mut_node = &mut random_image();
 }
 
 pub fn swap_terminal(node: &mut NodeRef) {
@@ -140,6 +148,34 @@ pub fn swap_terminal(node: &mut NodeRef) {
         ETerminal::ResizeFilter => mut_node.value = Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
         ETerminal::NoiseType => mut_node.value = Some(NodeValue::from_noise_type([NoiseType::Gaussian, NoiseType::SaltPepper][rand::thread_rng().gen_range(0..2)])),
     }
+
+    drop(guard);
+}
+
+pub fn swap_function(node: &mut NodeRef) {
+    let mut guard = node.lock().unwrap();
+    let mut_node = guard.deref_mut();
+
+    if mut_node.clone().node_type != NodeType::Function {
+        return;
+    }
+
+    let function = random_function();
+
+    let mut images: Vec<Node> = vec![];
+    
+    for arg in mut_node.clone().args {
+        let node = arg.lock().unwrap();
+        if node.clone().node_type == NodeType::Function {
+            images.push(node.clone());
+            return;
+        }
+    };
+
+    mut_node.terminal = None;
+    mut_node.function = Some(function.clone());
+    mut_node.node_type = NodeType::Function;
+    mut_node.args = populate_args(function, images);
 
     drop(guard);
 }
