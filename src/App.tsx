@@ -36,14 +36,21 @@ function App() {
   }
 
   useEffect(() => {
-    const unlisten = listen("loading", async (e) => {
+    const loading_unlisten = listen("loading", async (e) => {
       if (listenPaused) return
       pauseListen(true)
+
       await getPhenotypes()
+
       setLoading(false)
+      pauseListen(false)
+    });
+    const evolving_unlisten = listen("evolving", async (e) => {
+      setLoading(true)
+      setImages([])
     });
     return () => {
-      unlisten.then(f => f())
+      loading_unlisten.then(f => f())
     };
   }, []);
 

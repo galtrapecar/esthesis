@@ -116,3 +116,30 @@ pub fn image_to_function(node: &mut NodeRef) {
 
     drop(guard);
 }
+
+pub fn swap_terminal(node: &mut NodeRef) {
+    let mut guard = node.lock().unwrap();
+    let mut_node = guard.deref_mut();
+
+    if mut_node.clone().node_type != NodeType::Terminal {
+        return;
+    }
+
+    match mut_node.clone().terminal.unwrap() {
+        ETerminal::Int32 => mut_node.value = Some(NodeValue::from_int32(rand::thread_rng().gen_range(1..255))),
+        ETerminal::Float32 => mut_node.value = Some(NodeValue::from_float32(rand::thread_rng().gen_range(1..100) as f32 / 100.0)),
+        ETerminal::Coordinate => mut_node.value = Some(NodeValue::from_coordinate([rand::thread_rng().gen_range(0..980),rand::thread_rng().gen_range(0..980)])),
+        ETerminal::Rgba8 => mut_node.value = Some(NodeValue::from_rgba8(*Rgba::from_slice(&[
+            rand::thread_rng().gen_range(0..255) as u8,
+            rand::thread_rng().gen_range(0..255) as u8,
+            rand::thread_rng().gen_range(0..255) as u8,
+            rand::thread_rng().gen_range(1..255) as u8
+        ]))),
+        ETerminal::Image => {},
+        ETerminal::Stamp => mut_node.value = Some(NodeValue::from_stamp(random_stamp())),
+        ETerminal::ResizeFilter => mut_node.value = Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
+        ETerminal::NoiseType => mut_node.value = Some(NodeValue::from_noise_type([NoiseType::Gaussian, NoiseType::SaltPepper][rand::thread_rng().gen_range(0..2)])),
+    }
+
+    drop(guard);
+}

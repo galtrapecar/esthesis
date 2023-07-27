@@ -3,7 +3,7 @@ use std::{borrow::BorrowMut, sync::{Arc, Mutex}};
 use image::{Rgba, imageops::FilterType, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::image_to_function};
+use crate::{sets::{FUNCTION, ETerminal, RESIZE_FILTER_SET, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal}};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -39,7 +39,7 @@ impl Genotype {
     }
 
     pub fn mutate(&mut self) {
-        println!("mutate call");
+        // println!("mutate call");
         let size = self.size();
         let mut random: usize = rand::thread_rng().gen_range(0..size);
         let mut stack: Vec<Arc<Mutex<Node>>> = vec![];
@@ -58,16 +58,28 @@ impl Genotype {
                 if random == 0 {
                     break;
                 }
-                if guard.clone().terminal.is_none() || *guard.clone().terminal.as_ref().unwrap() == ETerminal::Image {
-                    stack.push(Arc::clone(arg));
-                    random -= 1;
-                    break;
-                }
+                stack.push(Arc::clone(arg));
+                random -= 1;
             }
         }
 
         if current_node_ref.is_none() { return; }
-        image_to_function(current_node_ref.unwrap().borrow_mut());
+        let lock = current_node_ref.clone().unwrap().lock().unwrap().clone();
+        match lock.clone().node_type {
+            NodeType::Function => {
+
+            },
+            NodeType::Terminal => {
+                match lock.clone().terminal.unwrap() {
+                    ETerminal::Image => {
+                        image_to_function(current_node_ref.unwrap().borrow_mut());
+                    },
+                    _ => {
+                        swap_terminal(current_node_ref.unwrap().borrow_mut());
+                    }
+                }
+            },
+        }
     }
 }
 
@@ -274,7 +286,7 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                 }))]);
             },
             ETerminal::Stamp => {
-                println!("stamp");
+                // println!("stamp");
                 root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
@@ -336,7 +348,7 @@ pub fn interpret(node: Node) -> RgbaImage {
                 add(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap())
             },
             EFunction::Stamp => {
-                println!("stamp");
+                // println!("stamp");
                 stamp(arguments[0].clone().image.unwrap(), arguments[1].clone().image.unwrap(), Some(arguments[2].coordinate.unwrap()))
             },
             EFunction::Tile => {

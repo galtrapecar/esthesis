@@ -7,7 +7,7 @@ mod sets;
 mod mutations;
 mod random;
 
-use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread};
+use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread, borrow::BorrowMut};
 
 use image::io::Reader;
 use rand::{distributions::Alphanumeric, Rng};
@@ -79,8 +79,19 @@ fn update_best_of_population_counter(population_size: i32) {
     let mut best_of_population_counter = BEST_OF_POPULATION_COUNTER.lock().unwrap();
     *best_of_population_counter += 1;
     if best_of_population_counter.clone() == population_size {
-        let _ = WINDOW.get().unwrap().emit("evolved", "");
+        let _ = WINDOW.get().unwrap().emit("loading", "");
         *best_of_population_counter = 0;
+
+        let mut population = POPULATION.lock().unwrap();
+        let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
+
+        population.clear();
+        for (k, v) in &*best_of_population {
+            let v = v.lock().unwrap();
+            population.insert(k.clone(), Mutex::new(v.clone()));
+            drop(v);
+        }
+        best_of_population.clear();
     }
 }
 
@@ -135,6 +146,8 @@ fn string_to_static_str(s: String) -> &'static str {
 
 #[tauri::command(async)]
 fn evolve_population(selection: [String; 2]) {
+    let _ = WINDOW.get().unwrap().emit("evolving", "");
+
     let population_size = 8;
 
     let mut threads = vec![];
@@ -153,7 +166,8 @@ fn evolve_population(selection: [String; 2]) {
             let population = POPULATION.lock().unwrap();
             let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
             let index = if i % 2 == 0 { 0 } else { 1 };
-            let genotype = population.get(selection.clone()[index]).unwrap().lock().unwrap();
+            let genotype = population.get(selection.clone()[index]).unwrap();
+            let genotype = genotype.lock().unwrap().clone();
 
             let str: String = rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect();
             let mut new_genotype = genotype.clone();
@@ -163,6 +177,9 @@ fn evolve_population(selection: [String; 2]) {
 
             let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(new_genotype.clone().get_root());
             let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
+
+            drop(population);
+            drop(best_of_population);
 
             update_best_of_population_counter(population_size);
             println!("evolved population {}", i);
@@ -183,8 +200,6 @@ fn main() {
 
             PATHS.lock().unwrap().insert("data".to_string(), data.clone());
             PATHS.lock().unwrap().insert("assets".to_string(), assets.clone());
-
-            // let inn = Reader::open(path.join("img2.png"))?.decode()?.to_rgba8();
 
             generate_population();
 

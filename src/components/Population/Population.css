@@ -6,6 +6,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transform: scale(0.6);
 }
 
 .Population .inner {
