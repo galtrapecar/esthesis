@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, sync::{Arc, Mutex}, ops::DerefMut, fmt};
+use std::{borrow::BorrowMut, sync::{Arc, Mutex}, ops::DerefMut};
 
 use image::{Rgba, RgbaImage, Pixel};
 use rand::Rng;
@@ -105,12 +105,12 @@ impl Genotype {
         let partner_size = partner.size();
         let my_node = random_node(rand::thread_rng().gen_range(1..my_size), &self.root).unwrap();
         let mut my_node = my_node.lock().unwrap();
-        let mut borrow = my_node.deref_mut();
+        let mut _borrow = my_node.deref_mut();
 
         let partner_node = random_node(rand::thread_rng().gen_range(1..partner_size), &partner.root).unwrap();
         let mut partner_node = partner_node.lock().unwrap().clone();
 
-        borrow = &mut partner_node;
+        _borrow = &mut partner_node;
 
         drop(partner_node);
         drop(my_node);

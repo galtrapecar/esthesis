@@ -1,6 +1,6 @@
 use std::{vec, fs};
 
-use image::{imageops::FilterType, RgbaImage, io::Reader};
+use image::{RgbaImage, io::Reader};
 use lazy_static::lazy_static;
 
 use crate::PATHS;
@@ -37,14 +37,14 @@ pub enum ETerminal {
     NoiseType,
 }
 
-#[derive(Clone, Debug)]
-pub enum EImage {
-    Carnation,
-    Tape,
-    Statue,
-    Paper,
-    Empty,
-}
+// #[derive(Clone, Debug)]
+// pub enum EImage {
+//     Carnation,
+//     Tape,
+//     Statue,
+//     Paper,
+//     Empty,
+// }
 
 #[derive(Clone, Debug)]
 pub struct FUNCTION {

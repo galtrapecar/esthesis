@@ -118,13 +118,13 @@ pub fn image_to_function(node: &mut NodeRef) {
 
 pub fn swap_image(node: &mut NodeRef) {
     let mut guard = node.lock().unwrap();
-    let mut mut_node = guard.deref_mut();
+    let mut _mut_node = guard.deref_mut();
 
-    if mut_node.clone().node_type != NodeType::Terminal || (mut_node.clone().terminal.is_some() && mut_node.clone().terminal.clone().unwrap() != ETerminal::Image) {
+    if _mut_node.clone().node_type != NodeType::Terminal || (_mut_node.clone().terminal.is_some() && _mut_node.clone().terminal.clone().unwrap() != ETerminal::Image) {
         return;
     }
 
-    mut_node = &mut random_image();
+    _mut_node = &mut random_image();
 }
 
 pub fn swap_terminal(node: &mut NodeRef) {

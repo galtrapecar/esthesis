@@ -3,7 +3,7 @@ use std::sync::Arc;
 use image::RgbaImage;
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, FUNCTION_SET, ETerminal, IMAGE_TERMINAL_SET, STAMP_IMAGE_TERMINAL_SET}, PATHS, tree::{Node, NodeType, NodeValue, NodeRef, NodeRefs}};
+use crate::{sets::{FUNCTION, FUNCTION_SET, ETerminal, IMAGE_TERMINAL_SET, STAMP_IMAGE_TERMINAL_SET}, tree::{Node, NodeType, NodeValue, NodeRef, NodeRefs}};
 
 pub fn random_function() -> FUNCTION {
     FUNCTION_SET[rand::thread_rng().gen_range(0..FUNCTION_SET.len())].clone()

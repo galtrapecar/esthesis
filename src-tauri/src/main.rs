@@ -8,13 +8,11 @@ mod mutations;
 mod random;
 mod display;
 
-use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread, borrow::BorrowMut, vec};
+use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread, vec};
 
 use image::io::Reader;
 use rand::{distributions::Alphanumeric, Rng};
-use random::_random_image;
 use regex::Regex;
-use sets::IMAGE_TERMINAL_SET;
 use tauri::{Window, Manager};
 use tree::{interpret, Genotype};
 
@@ -127,7 +125,7 @@ fn generate_population() {
     fs::remove_dir_all(path).unwrap();
     fs::create_dir(path).unwrap();
 
-    for i in 0..1 {
+    for i in 0..population_size {
         let handle = thread::spawn(move || {
             let mut population = POPULATION.lock().unwrap();
             let str = random_string();
@@ -139,7 +137,6 @@ fn generate_population() {
 
             update_population_counter(population_size);
             println!("created population {}", i);
-            println!("{}", genotype.get_root());
         });
         threads.push(handle);
     }
@@ -184,9 +181,9 @@ fn evolve_population(selection: [String; 2]) {
         let mut genotype = genotype.lock().unwrap().clone();
 
         let partner = old_population.get(rand::thread_rng().gen_range(0..old_population.len())).unwrap().lock().unwrap().clone();
-        println!("{}", genotype.size());
+        println!("{}", genotype.clone().get_root());
         genotype.crossover(partner);
-        println!("{}", genotype.size());
+        println!("{}", genotype.clone().get_root());
         new_population.push(Mutex::new(genotype));
     }
 
