@@ -198,3 +198,16 @@ pub fn grow_branch(node: &mut NodeRef) {
 
     *mut_node = node.lock().unwrap().clone();
 }
+
+pub fn swap_nodes(me: &mut NodeRef, partner: Node) {
+    let mut guard = me.lock().unwrap();
+    let mut _mut_node = guard.deref_mut();
+
+    _mut_node.args = partner.args.clone();
+    _mut_node.function = partner.function.clone();
+    _mut_node.terminal = partner.terminal.clone();
+    _mut_node.node_type = partner.node_type.clone();
+    _mut_node.value = partner.value.clone();
+
+    drop(guard);
+}

@@ -1,9 +1,9 @@
-use std::{borrow::BorrowMut, sync::{Arc, Mutex}, ops::DerefMut};
+use std::{borrow::BorrowMut, sync::{Arc, Mutex}};
 
 use image::{Rgba, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, EFunction}, functions::*, random::{random_function, random_stamp, random_image, random_node}, mutations::{image_to_function, swap_terminal, swap_image, swap_function, grow_branch}};
+use crate::{sets::{FUNCTION, ETerminal, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal, swap_image, swap_function, grow_branch, swap_nodes}};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -30,12 +30,34 @@ impl Genotype {
         count
     }
 
+    fn count_function_nodes(tree: Node) -> usize {
+        let mut count: usize = 1;
+        let mut stack = vec![tree];
+
+        while stack.len() > 0 {
+            let current = stack.pop().unwrap();
+
+            for arg in current.args.0 {
+                let node = arg.lock().unwrap().clone();
+                if node.node_type != NodeType::Terminal {
+                    stack.push(node);
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+
     pub fn size(&self) -> usize {
         Self::count_nodes(self.root.lock().unwrap().clone())
     }
 
-    pub fn get_root(self) -> Node {
-        self.root.lock().unwrap().clone()
+    pub fn body_size(&self) -> usize {
+        Self::count_function_nodes(self.root.lock().unwrap().clone())
+    }
+
+    pub fn get_root(self) -> NodeRef {
+        self.root
     }
 
     pub fn mutate(&mut self) {
@@ -101,19 +123,66 @@ impl Genotype {
     }
 
     pub fn crossover(&mut self, partner: Genotype) {
-        let my_size = self.size();
-        let partner_size = partner.size();
-        let my_node = random_node(rand::thread_rng().gen_range(1..my_size), &self.root).unwrap();
-        let mut my_node = my_node.lock().unwrap();
-        let mut _borrow = my_node.deref_mut();
+        let size = self.size();
+        let mut random: usize = rand::thread_rng().gen_range(0..size);
 
-        let partner_node = random_node(rand::thread_rng().gen_range(1..partner_size), &partner.root).unwrap();
-        let mut partner_node = partner_node.lock().unwrap().clone();
+        let mut stack: Vec<NodeRef> = vec![];
+        stack.push(Arc::clone(&self.root));
 
-        _borrow = &mut partner_node;
+        let mut current_node_ref= None;
+        
+        while stack.len() > 0 {
+            if random == 0 {
+                break;
+            }
+            let current_node = Arc::clone(&stack.pop().unwrap());
+            let guard = current_node.lock().unwrap();
+            for arg in guard.clone().args.0.iter() {
+                if random == 0 { break; }
+                let node = arg.lock().unwrap().clone();
+                if node.node_type == NodeType::Terminal { continue; }
+                current_node_ref = Some(Arc::clone(arg));
+                stack.push(Arc::clone(arg));
+                random -= 1;
+            }
+        }
 
-        drop(partner_node);
-        drop(my_node);
+        if current_node_ref.is_none() { return; }
+
+        println!("here");
+
+        stack.clear();
+        random = rand::thread_rng().gen_range(0..partner.size());
+
+        let mut partner_node_ref= None;
+
+        while stack.len() > 0 {
+            if random == 0 {
+                break;
+            }
+            let current_node = Arc::clone(&stack.pop().unwrap());
+            let current_node = current_node.lock().unwrap().clone();
+            for arg in current_node.args.0.iter() {
+                if random == 0 { break; }
+                let node = arg.lock().unwrap().clone();
+                if node.node_type == NodeType::Terminal {
+                    drop(node);
+                    continue;
+                }
+                drop(node);
+                partner_node_ref = Some(Arc::clone(arg));
+                stack.push(Arc::clone(arg));
+                random -= 1;
+            }
+        }
+
+        if partner_node_ref.is_none() { return; }
+
+        let lock = partner_node_ref.unwrap().lock().unwrap().clone();
+        println!("locked partner");
+
+        swap_nodes(current_node_ref.unwrap().borrow_mut(), lock.clone());
+        println!("node swapped with {:?}", lock.clone().function.clone().unwrap().name);
     }
 }
 

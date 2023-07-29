@@ -132,7 +132,9 @@ fn generate_population() {
             let genotype = Genotype::new();
             population.insert(str.clone(), Mutex::new(genotype.clone()));
 
-            let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(genotype.clone().get_root());
+            let root = genotype.clone().get_root().lock().unwrap().clone();
+
+            let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(root);
             let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
 
             update_population_counter(population_size);
@@ -166,52 +168,65 @@ fn evolve_population(selection: [String; 2]) {
     fs::create_dir(path).unwrap();
 
     let clone = selection.clone();
-    let selection = [string_to_static_str(clone[0].clone()), string_to_static_str(clone[1].clone())];
 
-    let mut population = POPULATION.lock().unwrap();
-    let mut old_population = vec![];
-    for old_genotype in population.values() {
-        old_population.push(Mutex::new(old_genotype.lock().unwrap().clone()));
-    }
+    // Crossover ---------------------------------------------------------------------------------------------------
+
+    let mut old_population = POPULATION.lock().unwrap();
+
+    let best_genotypes = [
+        old_population.get(string_to_static_str(clone[0].clone())).unwrap().lock().unwrap().clone(),
+        old_population.get(string_to_static_str(clone[1].clone())).unwrap().lock().unwrap().clone()
+    ];
+
     let mut new_population = NEW_POPULATION.lock().unwrap();
+    let mut dead_bodies: Vec<Genotype> = vec![];
+
+    for v in old_population.values() {
+        let v = v.lock().unwrap().clone();
+        dead_bodies.push(v.clone());
+        drop(v);
+    }
+
+    old_population.clear();
 
     for i in 0..population_size {
+        // Pick a genotype to crossover with a best genotype
         let index = if i % 2 == 0 { 0 } else { 1 };
-        let genotype = population.get(selection.clone()[index]).unwrap();
-        let mut genotype = genotype.lock().unwrap().clone();
-
-        let partner = old_population.get(rand::thread_rng().gen_range(0..old_population.len())).unwrap().lock().unwrap().clone();
-        println!("{}", genotype.clone().get_root());
-        genotype.crossover(partner);
-        println!("{}", genotype.clone().get_root());
-        new_population.push(Mutex::new(genotype));
+        let mut genotype = best_genotypes[index].clone();
+        let body = dead_bodies[rand::thread_rng().gen_range(0..dead_bodies.len())].clone();
+        println!("starting crossover");
+        genotype.crossover(body);
+        println!("crossover");
+        new_population.push(Mutex::new(genotype.clone()));
     }
-
-    population.clear();
     
+    drop(new_population);
+
     // for (k, v) in &new_population {
     //     let v = v.lock().unwrap();
     //     population.insert(k.clone(), Mutex::new(v.clone()));
     //     drop(v);
     // }
 
+    // Mutation ---------------------------------------------------------------------------------------------------
     for i in 0..population_size {
         let handle = thread::spawn(move || {
             // let population = POPULATION.lock().unwrap();
             let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
             let mut new_population = NEW_POPULATION.lock().unwrap();
             let genotype = new_population.pop().unwrap();
-            let genotype = genotype.lock().unwrap().clone();
+            let mut genotype = genotype.lock().unwrap().clone();
 
             println!("{:p}", &genotype);
 
             let str = random_string();
-            let mut new_genotype = genotype.clone();
-            new_genotype.mutate(); 
+            genotype.mutate();
 
-            best_of_population.insert(str.clone(), Mutex::new(new_genotype.clone()));
+            best_of_population.insert(str.clone(), Mutex::new(genotype.clone()));
 
-            let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(new_genotype.clone().get_root());
+            let root = genotype.get_root().lock().unwrap().clone();
+
+            let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(root);
             let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
 
             drop(new_population);
