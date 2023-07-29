@@ -124,7 +124,13 @@ pub fn swap_image(node: &mut NodeRef) {
         return;
     }
 
-    _mut_node = &mut random_image();
+    let image_node = random_image();
+
+    _mut_node.args = image_node.args.clone();
+    _mut_node.function = image_node.function.clone();
+    _mut_node.terminal = image_node.terminal.clone();
+    _mut_node.node_type = image_node.node_type.clone();
+    _mut_node.value = image_node.value.clone();
 }
 
 pub fn swap_terminal(node: &mut NodeRef) {

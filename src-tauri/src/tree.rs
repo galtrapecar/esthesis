@@ -149,12 +149,12 @@ impl Genotype {
 
         if current_node_ref.is_none() { return; }
 
-        println!("here");
-
         stack.clear();
         random = rand::thread_rng().gen_range(0..partner.size());
 
         let mut partner_node_ref= None;
+
+        stack.push(partner.root);
 
         while stack.len() > 0 {
             if random == 0 {
@@ -179,10 +179,7 @@ impl Genotype {
         if partner_node_ref.is_none() { return; }
 
         let lock = partner_node_ref.unwrap().lock().unwrap().clone();
-        println!("locked partner");
-
         swap_nodes(current_node_ref.unwrap().borrow_mut(), lock.clone());
-        println!("node swapped with {:?}", lock.clone().function.clone().unwrap().name);
     }
 }
 

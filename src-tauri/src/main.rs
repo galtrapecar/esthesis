@@ -91,9 +91,13 @@ fn update_best_of_population_counter(population_size: i32) {
         let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
 
         population.clear();
+        println!("- EVOLVED POPULATION ----------------------------------------------");
         for (k, v) in &*best_of_population {
             let v = v.lock().unwrap();
             population.insert(k.clone(), Mutex::new(v.clone()));
+
+            println!("---- {} ------------------", k.clone());
+            println!("{}", v.clone().get_root().lock().unwrap().clone());
             drop(v);
         }
         best_of_population.clear();
@@ -216,8 +220,6 @@ fn evolve_population(selection: [String; 2]) {
             let mut new_population = NEW_POPULATION.lock().unwrap();
             let genotype = new_population.pop().unwrap();
             let mut genotype = genotype.lock().unwrap().clone();
-
-            println!("{:p}", &genotype);
 
             let str = random_string();
             genotype.mutate();
