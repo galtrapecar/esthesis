@@ -1,9 +1,9 @@
-use std::{borrow::BorrowMut, sync::{Arc, Mutex}};
+use std::{borrow::BorrowMut, sync::{Arc, Mutex}, ops::DerefMut, fmt};
 
 use image::{Rgba, RgbaImage, Pixel};
 use rand::Rng;
 
-use crate::{sets::{FUNCTION, ETerminal, EFunction}, functions::*, random::{random_function, random_stamp, random_image}, mutations::{image_to_function, swap_terminal, swap_image, swap_function, grow_branch}};
+use crate::{sets::{FUNCTION, ETerminal, EFunction}, functions::*, random::{random_function, random_stamp, random_image, random_node}, mutations::{image_to_function, swap_terminal, swap_image, swap_function, grow_branch}};
 
 #[derive(Clone, Debug)]
 pub struct Genotype {
@@ -22,7 +22,7 @@ impl Genotype {
         while stack.len() > 0 {
             let current = stack.pop().unwrap();
 
-            for arg in current.args {
+            for arg in current.args.0 {
                 stack.push(arg.lock().unwrap().clone());
                 count += 1;
             }
@@ -53,7 +53,7 @@ impl Genotype {
             }
             let current_node = Arc::clone(&stack.pop().unwrap());
             let guard = current_node.lock().unwrap();
-            for arg in guard.clone().args.iter() {
+            for arg in guard.clone().args.0.iter() {
                 current_node_ref = Some(Arc::clone(arg));
                 if random == 0 {
                     break;
@@ -99,8 +99,23 @@ impl Genotype {
             },
         }
     }
-}
 
+    pub fn crossover(&mut self, partner: Genotype) {
+        let my_size = self.size();
+        let partner_size = partner.size();
+        let my_node = random_node(rand::thread_rng().gen_range(1..my_size), &self.root).unwrap();
+        let mut my_node = my_node.lock().unwrap();
+        let mut borrow = my_node.deref_mut();
+
+        let partner_node = random_node(rand::thread_rng().gen_range(1..partner_size), &partner.root).unwrap();
+        let mut partner_node = partner_node.lock().unwrap().clone();
+
+        borrow = &mut partner_node;
+
+        drop(partner_node);
+        drop(my_node);
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NodeType {
@@ -225,10 +240,13 @@ pub struct Node {
     pub function: Option<FUNCTION>,
     pub terminal: Option<ETerminal>,
     pub value: Option<NodeValue>,
-    pub args: Vec<NodeRef>,
+    pub args: NodeRefs,
 }
 
 pub type NodeRef = Arc<Mutex<Node>>;
+
+#[derive(Clone, Debug)]
+pub struct NodeRefs(pub Vec<NodeRef>);
 
 pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
     // initial node
@@ -237,7 +255,7 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
         function: Some(random_function()),
         terminal: None,
         value: None,
-        args: vec![]
+        args: NodeRefs(vec![])
     };
 
     for arg in root.clone().function.unwrap().args {
@@ -247,38 +265,38 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                 let f_or_t = rand::thread_rng().gen_range(0..=10);
                 // 100% probability of creating a branching function node
                 if depth <= 2 {
-                    root.args.append(&mut vec![grow(depth + 1, max_depth)]);
+                    root.args.0.append(&mut vec![grow(depth + 1, max_depth)]);
                     continue;
                 }
                 // 90% probability of creating a branching function node
                 if f_or_t > 1 && depth < max_depth {
-                    root.args.append(&mut vec![grow(depth + 1, max_depth)]);
+                    root.args.0.append(&mut vec![grow(depth + 1, max_depth)]);
                     continue;
                 } else {
                 // 10% probability of creating a final image terminal
-                    root.args.append(&mut vec![Arc::new(Mutex::new(random_image()))]);
+                    root.args.0.append(&mut vec![Arc::new(Mutex::new(random_image()))]);
                 }
             },
             ETerminal::Int32 => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Int32),
                     value: Some(NodeValue::from_int32(rand::thread_rng().gen_range(1..255))),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
             ETerminal::Float32 => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Float32),
                     value: Some(NodeValue::from_float32(rand::thread_rng().gen_range(1..100) as f32 / 100.0)),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
             ETerminal::Coordinate => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Coordinate),
@@ -286,11 +304,11 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                         rand::thread_rng().gen_range(0..980),
                         rand::thread_rng().gen_range(0..980)
                     ])),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
             ETerminal::Rgba8 => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Rgba8),
@@ -300,35 +318,35 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
                         rand::thread_rng().gen_range(0..255) as u8,
                         rand::thread_rng().gen_range(1..255) as u8
                     ]))),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
             ETerminal::Stamp => {
                 // println!("stamp");
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::Image),
                     value: Some(NodeValue::from_stamp(random_stamp())),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
             // ETerminal::ResizeFilter => {
-            //     root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+            //     root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
             //         node_type: NodeType::Terminal,
             //         function: None,
             //         terminal: Some(ETerminal::ResizeFilter),
             //         value: Some(NodeValue::from_resize_filter(RESIZE_FILTER_SET.clone()[rand::thread_rng().gen_range(0..RESIZE_FILTER_SET.len())])),
-            //         args: vec![]
+            //         args: NodeRefs(vec![])
             //     }))]);
             // },
             ETerminal::NoiseType => {
-                root.args.append(&mut vec! [Arc::new(Mutex::new(Node {
+                root.args.0.append(&mut vec! [Arc::new(Mutex::new(Node {
                     node_type: NodeType::Terminal,
                     function: None,
                     terminal: Some(ETerminal::NoiseType),
                     value: Some(NodeValue::from_noise_type([NoiseType::Gaussian, NoiseType::SaltPepper][rand::thread_rng().gen_range(0..2)])),
-                    args: vec![]
+                    args: NodeRefs(vec![])
                 }))]);
             },
         }
@@ -338,7 +356,7 @@ pub fn grow(depth: u32, max_depth: u32) -> NodeRef {
 
 pub fn interpret(node: Node) -> RgbaImage {
     let mut arguments: Vec<NodeValue> = vec![];
-    for child in node.args {
+    for child in node.args.0 {
         let guard = child.lock().unwrap();
         let child = guard.clone();
         match child.node_type {

@@ -6,8 +6,9 @@ mod tree;
 mod sets;
 mod mutations;
 mod random;
+mod display;
 
-use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread, borrow::BorrowMut};
+use std::{collections::HashMap, path::PathBuf, sync::{Mutex, OnceLock}, fs, io::Cursor, thread, borrow::BorrowMut, vec};
 
 use image::io::Reader;
 use rand::{distributions::Alphanumeric, Rng};
@@ -68,6 +69,10 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref NEW_POPULATION: Mutex<Vec<Mutex<Genotype>>>  = Mutex::new(vec![]);
+}
+
+lazy_static! {
     pub static ref POPULATION_COUNTER: Mutex<i32> = Mutex::new(0);
 }
 
@@ -122,10 +127,10 @@ fn generate_population() {
     fs::remove_dir_all(path).unwrap();
     fs::create_dir(path).unwrap();
 
-    for i in 0..population_size {
+    for i in 0..1 {
         let handle = thread::spawn(move || {
             let mut population = POPULATION.lock().unwrap();
-            let str: String = rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect();
+            let str = random_string();
             let genotype = Genotype::new();
             population.insert(str.clone(), Mutex::new(genotype.clone()));
 
@@ -134,6 +139,7 @@ fn generate_population() {
 
             update_population_counter(population_size);
             println!("created population {}", i);
+            println!("{}", genotype.get_root());
         });
         threads.push(handle);
     }
@@ -142,6 +148,10 @@ fn generate_population() {
 // Thanks to https://stackoverflow.com/a/52367953
 fn string_to_static_str(s: String) -> &'static str {
     Box::leak(s.into_boxed_str())
+}
+
+fn random_string() -> String {
+    rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect()
 }
 
 #[tauri::command(async)]
@@ -161,17 +171,44 @@ fn evolve_population(selection: [String; 2]) {
     let clone = selection.clone();
     let selection = [string_to_static_str(clone[0].clone()), string_to_static_str(clone[1].clone())];
 
+    let mut population = POPULATION.lock().unwrap();
+    let mut old_population = vec![];
+    for old_genotype in population.values() {
+        old_population.push(Mutex::new(old_genotype.lock().unwrap().clone()));
+    }
+    let mut new_population = NEW_POPULATION.lock().unwrap();
+
+    for i in 0..population_size {
+        let index = if i % 2 == 0 { 0 } else { 1 };
+        let genotype = population.get(selection.clone()[index]).unwrap();
+        let mut genotype = genotype.lock().unwrap().clone();
+
+        let partner = old_population.get(rand::thread_rng().gen_range(0..old_population.len())).unwrap().lock().unwrap().clone();
+        println!("{}", genotype.size());
+        genotype.crossover(partner);
+        println!("{}", genotype.size());
+        new_population.push(Mutex::new(genotype));
+    }
+
+    population.clear();
+    
+    // for (k, v) in &new_population {
+    //     let v = v.lock().unwrap();
+    //     population.insert(k.clone(), Mutex::new(v.clone()));
+    //     drop(v);
+    // }
+
     for i in 0..population_size {
         let handle = thread::spawn(move || {
-            let population = POPULATION.lock().unwrap();
+            // let population = POPULATION.lock().unwrap();
             let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
-            let index = if i % 2 == 0 { 0 } else { 1 };
-            let genotype = population.get(selection.clone()[index]).unwrap();
+            let mut new_population = NEW_POPULATION.lock().unwrap();
+            let genotype = new_population.pop().unwrap();
             let genotype = genotype.lock().unwrap().clone();
 
             println!("{:p}", &genotype);
 
-            let str: String = rand::thread_rng().sample_iter(&Alphanumeric).take(7).map(char::from).collect();
+            let str = random_string();
             let mut new_genotype = genotype.clone();
             new_genotype.mutate(); 
 
@@ -180,7 +217,7 @@ fn evolve_population(selection: [String; 2]) {
             let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(new_genotype.clone().get_root());
             let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
 
-            drop(population);
+            drop(new_population);
             drop(best_of_population);
 
             update_best_of_population_counter(population_size);
