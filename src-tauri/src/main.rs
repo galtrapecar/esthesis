@@ -120,7 +120,7 @@ fn generate_population() {
     let mut threads = vec![];
 
     let mut borrow = POPULATION.lock().unwrap();
-    *borrow = HashMap::new();
+    borrow.clear();
     drop(borrow);
 
     let borrow = PATHS.lock().unwrap();
@@ -141,8 +141,8 @@ fn generate_population() {
             let out: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = interpret(root);
             let _ = out.save(PATHS.lock().unwrap().get("data").unwrap().join(format!("{}.png", str.clone())));
 
+            // println!("created population {}", i);
             update_population_counter(population_size);
-            println!("created population {}", i);
         });
         threads.push(handle);
     }
@@ -183,6 +183,7 @@ fn evolve_population(selection: [String; 2]) {
     ];
 
     let mut new_population = NEW_POPULATION.lock().unwrap();
+    new_population.clear();
     let mut dead_bodies: Vec<Genotype> = vec![];
 
     for v in old_population.values() {
@@ -194,37 +195,33 @@ fn evolve_population(selection: [String; 2]) {
     old_population.clear();
 
     for i in 0..population_size {
-        // Pick a genotype to crossover with a best genotype
         let index = if i % 2 == 0 { 0 } else { 1 };
         let mut genotype = best_genotypes[index].clone();
         let body = dead_bodies[rand::thread_rng().gen_range(0..dead_bodies.len())].clone();
-        println!("starting crossover");
+        // println!("starting crossover");
         genotype.crossover(body);
-        println!("crossover");
+        // println!("crossover");
         new_population.push(Mutex::new(genotype.clone()));
     }
     
     drop(new_population);
 
-    // for (k, v) in &new_population {
-    //     let v = v.lock().unwrap();
-    //     population.insert(k.clone(), Mutex::new(v.clone()));
-    //     drop(v);
-    // }
-
     // Mutation ---------------------------------------------------------------------------------------------------
-    for i in 0..population_size {
+    for _ in 0..population_size {
         let handle = thread::spawn(move || {
-            // let population = POPULATION.lock().unwrap();
             let mut best_of_population = BEST_OF_POPULATION.lock().unwrap();
             let mut new_population = NEW_POPULATION.lock().unwrap();
             let genotype = new_population.pop().unwrap();
             let mut genotype = genotype.lock().unwrap().clone();
 
             let str = random_string();
+            println!("BEFORE MUTATE: {}", genotype.clone().get_root().lock().unwrap().clone());
             genotype.mutate();
 
             best_of_population.insert(str.clone(), Mutex::new(genotype.clone()));
+            println!("PUSHED TO BOP: {}", genotype.clone().get_root().lock().unwrap().clone());
+
+            println!("------------------------------------------");
 
             let root = genotype.get_root().lock().unwrap().clone();
 
@@ -234,8 +231,8 @@ fn evolve_population(selection: [String; 2]) {
             drop(new_population);
             drop(best_of_population);
 
+            // println!("evolved population {}", i);
             update_best_of_population_counter(population_size);
-            println!("evolved population {}", i);
         });
         threads.push(handle);
     }
